@@ -22,3 +22,38 @@ jwt:
     type: Web
     title: JWT
     url: https://jwt.io/
+
+captchaai:
+    type: Web
+    title: Captcha AI
+    url: https://captchaai.com/
+
+race-condition:
+    type: Web
+    title: Race Condition
+    url: https://en.wikipedia.org/wiki/Race_condition
+
+mermaid:
+    type: Web
+    title: Mermaid
+    url: https://mermaid.js.org/
+
+async-io:
+    type: Web
+    title: asyncio
+    url: https://docs.python.org/3/library/asyncio.html
+
+aiohttp:
+    type: Web
+    title: aiohttp
+    url: https://docs.aiohttp.org/en/stable/
+
+chatgpt-67d1f22c:
+    type: Web
+    title: ChatGPT4o+Reason
+    url: https://chatgpt.com/share/67d1f22c-e034-8012-a55c-ee6e5263ece4
+
+isolation-level:
+    type: Web
+    title: Isolation Level
+    url: https://en.wikipedia.org/wiki/Isolation_(database_systems)

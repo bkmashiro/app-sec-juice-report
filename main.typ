@@ -20,7 +20,9 @@
   preface: [
     #align(center + horizon)[
       Yuzhe Shi \
-      #link("mailto:20108862@mail.wit.ie")
+      #link("mailto:20108862@mail.wit.ie") \
+      \ 
+      Code is available on #link("https://github.com/bkmashiro/app-sec-juice-report")
     ]
   ],
   bibliography: bibliography("refs.yml"),
@@ -134,7 +136,7 @@ It can be observed that the feedback is successfully submitted with a zero‑sta
   To mitigate such vulnerabilities, it is essential to implement robust server‑side validation. This ensures that all inputs, regardless of client‑side restrictions, are thoroughly checked against expected criteria before processing.
 
 
-This exercise serves as a potent reminder that *trusting client-side validation is a critical misstep in secure application design*. The simplicity of bypassing these checks in the Zero Stars challenge underscores a fundamental security flaw that can be exploited not just for low‑impact issues like a manipulated review, but potentially for more serious breaches in different contexts. It's a best practice to *always validate user input on the server side*.
+This exercise serves as a potent reminder that *trusting client-side validation is a critical misstep in secure application design*. The simplicity of bypassing these checks in the Zero Stars challenge underscores a fundamental security flaw that can be exploited not just for low‑impact issues like a manipulated review, but potentially for more serious breaches in different contexts. It's a best practice to *always validate user input on the server side*. @chatgpt-67d1f22c
 
 
 = CAPTCHA Bypass
@@ -210,14 +212,16 @@ The script sends 10 feedbacks successfully within 10 seconds.
 - *Prevention Measures:*  
   Robust prevention requires implementing comprehensive server‑side validations, including strict rate limiting, behavioral analysis, and additional anti‑automation mechanisms to complement the CAPTCHA.
 
-This challenge reinforces a crucial lesson in web application security: relying solely on client‑side controls such as CAPTCHA is insufficient. The ease with which the CAPTCHA was bypassed demonstrates that attackers can exploit even seemingly simple misconfigurations to subvert security measures. In my view, a layered security approach is essential; robust server‑side protections must always be in place to validate client actions and mitigate automated attacks. This exercise not only enhances our understanding of the specific vulnerability but also underscores the broader principle that effective security is built on multiple, interlocking defenses.
+This challenge reinforces a crucial lesson in web application security: Do not always rely on CAPTCHA only to defensive against automated attacks. While CAPTCHA can be an effective tool, it must be complemented by *server‑side rate limiting* and *anti‑automation measures* to prevent abuse. The fact that a simple Python script can bypass the CAPTCHA and flood the system with fake feedbacks underscores the importance of a *multi‑layered defense strategy* to protect against automated threats.
+
+And in fact, advanced AI models are able to solve CAPTCHAs with high accuracy@captchaai, so relying solely on CAPTCHA is not a good idea.
 
 
 
 = Deluxe Fraud
 *Difficulty*: 3 stars
 
-*Description*: Here the goal is to obtain a deluxe membership without paying for it. This is achieved by intercepting the payment request (typically via a proxy tool) and modifying the parameters—such as sending an empty payment mode—so that the server grants you the membership without verifying the actual payment.
+*Description*: Here the goal is to obtain a deluxe membership without paying for it. This is achieved by intercepting the payment request (typically via a proxy tool, here a modified replay request is used) and modifying the parameters, such as sending an empty payment mode, so that the server grants you the membership without verifying the actual payment.
 
 *Category*: 
 - Improper Input Validation (Because the server fails to properly check that a legitimate, non‑empty payment type value was submitted.)
@@ -279,12 +283,12 @@ This challenge underscores the critical importance of *server-side validation* i
 
 A very common idea of calculating the balance is:
 $
-  "balance" = "balance" + "price" * "quantity"
+  "balance" = "balance" - "price" * "quantity"
 $
 
 If we can set the `quantity` or `price` to a negative number, the balance will increase.
 
-Modifying the `price` is not a good idea because we have to modify the product price in the DB which is unclear right now, so we can modify the `quantity` instead.
+Modifying the `price` is not a good idea because we have to modify the product price in the Database while how to do that is unclear right now, so we can modify the `quantity` instead.
 
 The following shows a normal order request:
 
@@ -298,7 +302,7 @@ We can see a `POST` request is sent to `/rest/BastetItems` to add an item to the
 + `BasketId`
 + `quantity`
 
-Same as the previous challenges, we can copy the request as a cURL command. 
+Same as the previous challenges, we can copy the request as a cURL command and import it to Postman.
 
 #figure(caption: [Add a Item with negative quantity])[
   #image("ca.assets/image-20250306220151942.png")
@@ -314,9 +318,9 @@ After adding some negative quantitied items to the basket, we can see the total 
 
 *Walkthrough:*  
 1. *Understanding the Order Process:*  
-   The shopping cart updates the total price using:  
+   Gusee the shopping cart updates the total price using:  
    $
-   "balance" = "balance" + "price" * "quantity"
+   "balance" = "balance" - "price" * "quantity"
    $
    If `quantity` is negative, this results in an undeserved credit.  
 2. *Intercepting and Modifying Requests:*  
@@ -334,9 +338,6 @@ After adding some negative quantitied items to the basket, we can see the total 
   - Unauthorized financial gain, allowing users to generate illegitimate store credit.  
   - Business losses if exploited at scale, leading to fraudulent transactions.  
   - Possible legal consequences due to failure to secure financial transactions.  
-- *Violated Security Services:*  
-  - *Integrity:* The total order value is manipulated, violating trust in the transaction system.  
-  - *Authorization:* Users can obtain financial benefits they are not entitled to.  
 - *Prevention Measures:*  
   - *Strict Input Validation:* Ensure quantities and prices are non-negative before processing transactions.  
   - *Server-Side Checks:* Validate order totals before finalizing purchases.  
@@ -381,17 +382,19 @@ We can see if we send a duplicate request#footnote([Using same method as previou
   #image("ca.assets/image-20250310203259743.png")
 ]
 
+We can find out that the server actually checks the `likedBy` field to see if the user has already liked the review.
+
 The next idea is to send multiple requests simultaneously. If the server does not handle concurrent requests correctly (no lock when updating the `likedBy` field), we can bypass the restriction.
 
-This phenomenon is called a *Race Condition*. 
+This phenomenon is called a *Race Condition*@race-condition. 
 
-#figure(caption: [Sequential Diagram of attack])[
+#figure(caption: [Sequential Diagram of attack #footnote([Diagram generated with Mermaid@mermaid])])[
   #image("ca.assets/like3timesseq.svg")
 ]
 
-We can see that the server read the `likedBy` field 3 times before the rest of the requests are processed. So the server will read the same `likedBy` field (reading `[]`) 3 times#footnote([So called "Dirty read"]) and update it (assigning `[User 1]` to `likedBy` field) 3 times, while each time assigning the same list to the `likedBy` field. On the other hand, the `like` field is updated using atomic operations, so the `like` field will be updated correctly.#footnote([This is an assumpion. Not verified.])
+We can see that the server read the `likedBy` field 3 times before the rest of the requests are processed. So the server will read the same `likedBy` field (reading `[]`) 3 times#footnote([So called "Dirty read", to read data that has been modified by another transaction, but not yet committed.]) and update it (assigning `[User 1]` to `likedBy` field) 3 times, while each time assigning the same list to the `likedBy` field. On the other hand, the `like` field is updated using atomic operations, so the `like` field will be updated correctly.#footnote([This is an assumption. Not verified.])
 
-`asyncio` and `aiohttp` are used to send multiple requests simultaneously. The following Python script sends 3 like requests simultaneously:
+`asyncio`@async-io and `aiohttp`@aiohttp are used to send multiple requests simultaneously. The following Python script sends 3 like requests simultaneously:
 
 ```python
 import asyncio
@@ -453,7 +456,7 @@ await main()
   - *Concurrency Locks:* Implement locks or optimistic concurrency control to prevent multiple requests from reading stale data.  
   - *Rate Limiting:* Enforce a short delay between consecutive like actions from the same user to mitigate rapid repeated submissions.
 
-This challenge demonstrates how concurrency issues can lead to unintended security flaws. In my opinion, race conditions are particularly dangerous because they often go unnoticed in typical testing but can be devastating when exploited. The fact that a user can like a review multiple times is a symptom of a deeper issue—*improper state management in concurrent environments*. To prevent such vulnerabilities, developers must adopt secure coding practices that account for *asynchronous execution and concurrent data access*, particularly in web applications handling real-time user interactions.
+This challenge demonstrates how concurrency issues can lead to unintended security flaws. In my opinion, race conditions are particularly dangerous because they often go unnoticed in typical testing but can be devastating when exploited. The fact that a user can like a review multiple times is a symptom of a deeper issue—*improper state management in concurrent environments*. To prevent such vulnerabilities, developers must adopt secure coding practices that account for *asynchronous execution and concurrent data access*, particularly in web applications handling real-time user interactions. Besides, proper settings in the database, such as *isolation levels*@isolation-level, can also help to prevent such issues.
 
 = Conclusion
 
